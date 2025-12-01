@@ -17,24 +17,37 @@ steps:
       done
       echo "=== Patches complete ==="
 
-# Step 2: Build the Docker image with BuildKit enabled.
+# Step 2: Pull cache image (ignore if not exists)
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      docker pull europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest || true
+
+# Step 3: Build the Docker image with BuildKit and cache.
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: 'bash'
   args:
     - '-c'
     - |
       DOCKER_BUILDKIT=1 docker build \
+        --cache-from europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest \
         -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA \
+        -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest \
         -f Dockerfile.cloud \
         .
 
-# Step 3: Push the image to Artifact Registry.
+# Step 4: Push both tags to Artifact Registry.
 - name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
   args:
-    - 'push'
-    - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA'
+    - '-c'
+    - |
+      docker push europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA
+      docker push europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest
 
-# Step 4: Deploy to Cloud Run with IS_CLOUD=true.
+# Step 5: Deploy to Cloud Run with IS_CLOUD=true.
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: 'gcloud'
   args:
@@ -53,6 +66,8 @@ steps:
 
 images:
 - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA'
+- 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest'
 
 options:
   logging: 'CLOUD_LOGGING_ONLY'
+  machineType: 'E2_HIGHCPU_8'

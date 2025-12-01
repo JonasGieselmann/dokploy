@@ -1,5 +1,5 @@
 diff --git a/apps/dokploy/components/layouts/side.tsx b/apps/dokploy/components/layouts/side.tsx
-index 7473fe58..35c34654 100644
+index 7473fe58..d7ebfab0 100644
 --- a/apps/dokploy/components/layouts/side.tsx
 +++ b/apps/dokploy/components/layouts/side.tsx
 @@ -149,56 +149,53 @@ const MENU: Menu = {
@@ -8,12 +8,14 @@ index 7473fe58..35c34654 100644
  			icon: BarChartHorizontalBigIcon,
 -			// Only enabled in non-cloud environments
 -			isEnabled: ({ isCloud }) => !isCloud,
--		},
--		{
--			isSingle: true,
--			title: "Schedules",
--			url: "/dashboard/schedules",
--			icon: Clock,
++			// PATCHED: Enabled for external server monitoring
++			isEnabled: ({ auth }) => auth?.role === "owner",
+ 		},
+ 		{
+ 			isSingle: true,
+ 			title: "Schedules",
+ 			url: "/dashboard/schedules",
+ 			icon: Clock,
 -			// Only enabled in non-cloud environments
 -			isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
 -		},
@@ -28,17 +30,9 @@ index 7473fe58..35c34654 100644
 -					(auth?.role === "owner" || auth?.canAccessToTraefikFiles) &&
 -					!isCloud
 -				),
-+			// PATCHED: Enabled for external server monitoring
++			// PATCHED: Enabled - works with min 1 instance for persistent cron
 +			isEnabled: ({ auth }) => auth?.role === "owner",
  		},
-+		// PATCHED: Disabled - needs Cloud Scheduler for reliable cron in Cloud Run
-+		// {
-+		// 	isSingle: true,
-+		// 	title: "Schedules",
-+		// 	url: "/dashboard/schedules",
-+		// 	icon: Clock,
-+		// 	isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
-+		// },
 +		// PATCHED: Disabled - needs local Traefik filesystem
 +		// {
 +		// 	isSingle: true,
