@@ -1,0 +1,104 @@
+diff --git a/apps/dokploy/components/layouts/side.tsx b/apps/dokploy/components/layouts/side.tsx
+index 7473fe58..e652669e 100644
+--- a/apps/dokploy/components/layouts/side.tsx
++++ b/apps/dokploy/components/layouts/side.tsx
+@@ -144,61 +144,56 @@ const MENU: Menu = {
+ 			url: "/dashboard/projects",
+ 			icon: Folder,
+ 		},
+-		{
+-			isSingle: true,
+-			title: "Monitoring",
+-			url: "/dashboard/monitoring",
+-			icon: BarChartHorizontalBigIcon,
+-			// Only enabled in non-cloud environments
+-			isEnabled: ({ isCloud }) => !isCloud,
+-		},
+-		{
+-			isSingle: true,
+-			title: "Schedules",
+-			url: "/dashboard/schedules",
+-			icon: Clock,
+-			// Only enabled in non-cloud environments
+-			isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
+-		},
+-		{
+-			isSingle: true,
+-			title: "Traefik File System",
+-			url: "/dashboard/traefik",
+-			icon: GalleryVerticalEnd,
+-			// Only enabled for admins and users with access to Traefik files in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!(
+-					(auth?.role === "owner" || auth?.canAccessToTraefikFiles) &&
+-					!isCloud
+-				),
+-		},
++		// PATCHED: Disabled for Cloud Run (no local Docker/Traefik)
++		// {
++		// 	isSingle: true,
++		// 	title: "Monitoring",
++		// 	url: "/dashboard/monitoring",
++		// 	icon: BarChartHorizontalBigIcon,
++		// 	isEnabled: ({ isCloud }) => !isCloud,
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Schedules",
++		// 	url: "/dashboard/schedules",
++		// 	icon: Clock,
++		// 	isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Traefik File System",
++		// 	url: "/dashboard/traefik",
++		// 	icon: GalleryVerticalEnd,
++		// 	isEnabled: ({ auth, isCloud }) =>
++		// 		!!((auth?.role === "owner" || auth?.canAccessToTraefikFiles) && !isCloud),
++		// },
+ 		{
+ 			isSingle: true,
+ 			title: "Docker",
+ 			url: "/dashboard/docker",
+ 			icon: BlocksIcon,
+-			// Only enabled for admins and users with access to Docker in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
++			// PATCHED: Always enabled for self-hosted (works on external servers)
++			isEnabled: ({ auth }) =>
++				!!(auth?.role === "owner" || auth?.canAccessToDocker),
+ 		},
+ 		{
+ 			isSingle: true,
+ 			title: "Swarm",
+ 			url: "/dashboard/swarm",
+ 			icon: PieChart,
+-			// Only enabled for admins and users with access to Docker in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
+-		},
+-		{
+-			isSingle: true,
+-			title: "Requests",
+-			url: "/dashboard/requests",
+-			icon: Forward,
+-			// Only enabled for admins and users with access to Docker in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
++			// PATCHED: Always enabled for self-hosted (works on external servers)
++			isEnabled: ({ auth }) =>
++				!!(auth?.role === "owner" || auth?.canAccessToDocker),
+ 		},
++		// PATCHED: Disabled for Cloud Run (needs local Traefik access log)
++		// {
++		// 	isSingle: true,
++		// 	title: "Requests",
++		// 	url: "/dashboard/requests",
++		// 	icon: Forward,
++		// 	isEnabled: ({ auth, isCloud }) =>
++		// 		!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
++		// },
+ 
+ 		// Legacy unused menu, adjusted to the new structure
+ 		// {
