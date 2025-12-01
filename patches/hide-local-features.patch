@@ -1,11 +1,19 @@
 diff --git a/apps/dokploy/components/layouts/side.tsx b/apps/dokploy/components/layouts/side.tsx
-index 7473fe58..d881671c 100644
+index 7473fe58..b51737aa 100644
 --- a/apps/dokploy/components/layouts/side.tsx
 +++ b/apps/dokploy/components/layouts/side.tsx
-@@ -152,26 +152,24 @@ const MENU: Menu = {
- 			// Only enabled in non-cloud environments
- 			isEnabled: ({ isCloud }) => !isCloud,
+@@ -144,61 +144,55 @@ const MENU: Menu = {
+ 			url: "/dashboard/projects",
+ 			icon: Folder,
  		},
+-		{
+-			isSingle: true,
+-			title: "Monitoring",
+-			url: "/dashboard/monitoring",
+-			icon: BarChartHorizontalBigIcon,
+-			// Only enabled in non-cloud environments
+-			isEnabled: ({ isCloud }) => !isCloud,
+-		},
 -		{
 -			isSingle: true,
 -			title: "Schedules",
@@ -26,31 +34,24 @@ index 7473fe58..d881671c 100644
 -					!isCloud
 -				),
 -		},
-+		// PATCHED: Disabled - "Dokploy Server" schedules need local filesystem (not available in Cloud Run)
-+		// Note: Application/Compose schedules still work from within each service's settings
-+		// {
-+		// 	isSingle: true,
-+		// 	title: "Schedules",
-+		// 	url: "/dashboard/schedules",
-+		// 	icon: Clock,
-+		// 	isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
-+		// },
-+		// PATCHED: Disabled - needs local Traefik filesystem (not available in Cloud Run)
-+		// {
-+		// 	isSingle: true,
-+		// 	title: "Traefik File System",
-+		// 	url: "/dashboard/traefik",
-+		// 	icon: GalleryVerticalEnd,
-+		// 	isEnabled: ({ auth, isCloud }) =>
-+		// 		!!((auth?.role === "owner" || auth?.canAccessToTraefikFiles) && !isCloud),
-+		// },
- 		{
- 			isSingle: true,
- 			title: "Docker",
-@@ -190,15 +188,15 @@ const MENU: Menu = {
- 			isEnabled: ({ auth, isCloud }) =>
- 				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
- 		},
+-		{
+-			isSingle: true,
+-			title: "Docker",
+-			url: "/dashboard/docker",
+-			icon: BlocksIcon,
+-			// Only enabled for admins and users with access to Docker in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
+-		},
+-		{
+-			isSingle: true,
+-			title: "Swarm",
+-			url: "/dashboard/swarm",
+-			icon: PieChart,
+-			// Only enabled for admins and users with access to Docker in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
+-		},
 -		{
 -			isSingle: true,
 -			title: "Requests",
@@ -60,7 +61,47 @@ index 7473fe58..d881671c 100644
 -			isEnabled: ({ auth, isCloud }) =>
 -				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
 -		},
-+		// PATCHED: Disabled - needs local Traefik access log (not available in Cloud Run)
++		// PATCHED: All local-only features disabled for Cloud Run deployment
++		// These require local Docker daemon or local filesystem access
++		// External server management is available within each server's settings
++		// {
++		// 	isSingle: true,
++		// 	title: "Monitoring",
++		// 	url: "/dashboard/monitoring",
++		// 	icon: BarChartHorizontalBigIcon,
++		// 	isEnabled: ({ isCloud }) => !isCloud,
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Schedules",
++		// 	url: "/dashboard/schedules",
++		// 	icon: Clock,
++		// 	isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Traefik File System",
++		// 	url: "/dashboard/traefik",
++		// 	icon: GalleryVerticalEnd,
++		// 	isEnabled: ({ auth, isCloud }) =>
++		// 		!!((auth?.role === "owner" || auth?.canAccessToTraefikFiles) && !isCloud),
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Docker",
++		// 	url: "/dashboard/docker",
++		// 	icon: BlocksIcon,
++		// 	isEnabled: ({ auth, isCloud }) =>
++		// 		!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Swarm",
++		// 	url: "/dashboard/swarm",
++		// 	icon: PieChart,
++		// 	isEnabled: ({ auth, isCloud }) =>
++		// 		!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
++		// },
 +		// {
 +		// 	isSingle: true,
 +		// 	title: "Requests",
@@ -69,6 +110,6 @@ index 7473fe58..d881671c 100644
 +		// 	isEnabled: ({ auth, isCloud }) =>
 +		// 		!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
 +		// },
-
+ 
  		// Legacy unused menu, adjusted to the new structure
  		// {
