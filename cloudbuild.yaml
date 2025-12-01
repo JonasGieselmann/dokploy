@@ -1,0 +1,43 @@
+# This file defines the build steps for Google Cloud Build.
+# IS_CLOUD=true: Skips local Docker/Redis/Traefik init, runs only migrations
+
+steps:
+# Step 1: Build the Docker image with BuildKit enabled.
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      DOCKER_BUILDKIT=1 docker build \
+        -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA \
+        -f Dockerfile.cloud \
+        .
+
+# Step 2: Push the image to Artifact Registry.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    - 'push'
+    - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA'
+
+# Step 3: Deploy to Cloud Run with IS_CLOUD=true.
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: 'gcloud'
+  args:
+    - 'run'
+    - 'services'
+    - 'update'
+    - 'dokploy'
+    - '--image'
+    - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA'
+    - '--region'
+    - 'europe-west1'
+    - '--platform'
+    - 'managed'
+    - '--update-env-vars'
+    - 'IS_CLOUD=true'
+
+images:
+- 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA'
+
+options:
+  logging: 'CLOUD_LOGGING_ONLY'
