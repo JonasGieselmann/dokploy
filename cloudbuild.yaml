@@ -2,20 +2,20 @@
 # Applies patches before build to hide billing UI while keeping IS_CLOUD=true for server init
 
 steps:
-# Step 1: Apply self-hosted patches (hides billing tab, shows self-hosted UI)
-- name: 'ubuntu'
+# Step 1: Apply self-hosted patches (hides billing tab, allows unlimited servers)
+- name: 'gcr.io/cloud-builders/git'
   entrypoint: 'bash'
   args:
     - '-c'
     - |
-      echo "Applying self-hosted patches..."
+      echo "=== Applying self-hosted patches ==="
       for patch in patches/*.patch; do
         if [ -f "$patch" ]; then
-          echo "Applying $patch"
-          patch -p1 < "$patch" || echo "Warning: Patch $patch failed, continuing..."
+          echo "Applying $patch..."
+          git apply "$patch" && echo "✓ $patch applied" || echo "✗ $patch FAILED"
         fi
       done
-      echo "Patches applied."
+      echo "=== Patches complete ==="
 
 # Step 2: Build the Docker image with BuildKit enabled.
 - name: 'gcr.io/cloud-builders/docker'
