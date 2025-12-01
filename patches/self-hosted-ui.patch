@@ -1,0 +1,15 @@
+diff --git a/apps/dokploy/server/api/routers/settings.ts b/apps/dokploy/server/api/routers/settings.ts
+index e0a74f5c..f5e03169 100644
+--- a/apps/dokploy/server/api/routers/settings.ts
++++ b/apps/dokploy/server/api/routers/settings.ts
+@@ -706,7 +706,9 @@ export const settingsRouter = createTRPCRouter({
+ 			return true;
+ 		}),
+ 	isCloud: publicProcedure.query(async () => {
+-		return IS_CLOUD;
++		// Self-hosted on Cloud Run: return false to hide billing/SaaS features
++		// Server still uses IS_CLOUD=true internally for init
++		return false;
+ 	}),
+ 	isUserSubscribed: protectedProcedure.query(async ({ ctx }) => {
+ 		const haveServers = await db.query.server.findMany({

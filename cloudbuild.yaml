@@ -1,8 +1,23 @@
-# This file defines the build steps for Google Cloud Build.
-# IS_CLOUD=true: Skips local Docker/Redis/Traefik init, runs only migrations
+# Cloud Run Deployment for Self-Hosted Dokploy
+# Applies patches before build to hide billing UI while keeping IS_CLOUD=true for server init
 
 steps:
-# Step 1: Build the Docker image with BuildKit enabled.
+# Step 1: Apply self-hosted patches (hides billing tab, shows self-hosted UI)
+- name: 'ubuntu'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      echo "Applying self-hosted patches..."
+      for patch in patches/*.patch; do
+        if [ -f "$patch" ]; then
+          echo "Applying $patch"
+          patch -p1 < "$patch" || echo "Warning: Patch $patch failed, continuing..."
+        fi
+      done
+      echo "Patches applied."
+
+# Step 2: Build the Docker image with BuildKit enabled.
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: 'bash'
   args:
@@ -13,13 +28,13 @@ steps:
         -f Dockerfile.cloud \
         .
 
-# Step 2: Push the image to Artifact Registry.
+# Step 3: Push the image to Artifact Registry.
 - name: 'gcr.io/cloud-builders/docker'
   args:
     - 'push'
     - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA'
 
-# Step 3: Deploy to Cloud Run with IS_CLOUD=true.
+# Step 4: Deploy to Cloud Run with IS_CLOUD=true.
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: 'gcloud'
   args:
