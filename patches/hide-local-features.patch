@@ -2,10 +2,18 @@ diff --git a/apps/dokploy/components/layouts/side.tsx b/apps/dokploy/components/
 index 7473fe58..d881671c 100644
 --- a/apps/dokploy/components/layouts/side.tsx
 +++ b/apps/dokploy/components/layouts/side.tsx
-@@ -160,18 +160,15 @@ const MENU: Menu = {
+@@ -152,26 +152,24 @@ const MENU: Menu = {
  			// Only enabled in non-cloud environments
- 			isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
+ 			isEnabled: ({ isCloud }) => !isCloud,
  		},
+-		{
+-			isSingle: true,
+-			title: "Schedules",
+-			url: "/dashboard/schedules",
+-			icon: Clock,
+-			// Only enabled in non-cloud environments
+-			isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
+-		},
 -		{
 -			isSingle: true,
 -			title: "Traefik File System",
@@ -18,6 +26,15 @@ index 7473fe58..d881671c 100644
 -					!isCloud
 -				),
 -		},
++		// PATCHED: Disabled - "Dokploy Server" schedules need local filesystem (not available in Cloud Run)
++		// Note: Application/Compose schedules still work from within each service's settings
++		// {
++		// 	isSingle: true,
++		// 	title: "Schedules",
++		// 	url: "/dashboard/schedules",
++		// 	icon: Clock,
++		// 	isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
++		// },
 +		// PATCHED: Disabled - needs local Traefik filesystem (not available in Cloud Run)
 +		// {
 +		// 	isSingle: true,
@@ -30,7 +47,7 @@ index 7473fe58..d881671c 100644
  		{
  			isSingle: true,
  			title: "Docker",
-@@ -190,15 +187,15 @@ const MENU: Menu = {
+@@ -190,15 +188,15 @@ const MENU: Menu = {
  			isEnabled: ({ auth, isCloud }) =>
  				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
  		},
@@ -52,6 +69,6 @@ index 7473fe58..d881671c 100644
 +		// 	isEnabled: ({ auth, isCloud }) =>
 +		// 		!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
 +		// },
- 
+
  		// Legacy unused menu, adjusted to the new structure
  		// {

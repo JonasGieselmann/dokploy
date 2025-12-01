@@ -18,26 +18,6 @@ index 51339e6b..0537466a 100644
  	const { user } = await validateRequest(ctx.req);
  	if (!user) {
  		return {
-diff --git a/apps/dokploy/pages/dashboard/schedules.tsx b/apps/dokploy/pages/dashboard/schedules.tsx
-index 17d04b29..2ec56b98 100644
---- a/apps/dokploy/pages/dashboard/schedules.tsx
-+++ b/apps/dokploy/pages/dashboard/schedules.tsx
-@@ -31,14 +31,7 @@ SchedulesPage.getLayout = (page: ReactElement) => {
- export async function getServerSideProps(
- 	ctx: GetServerSidePropsContext<{ serviceId: string }>,
- ) {
--	if (IS_CLOUD) {
--		return {
--			redirect: {
--				permanent: true,
--				destination: "/dashboard/projects",
--			},
--		};
--	}
-+	// PATCHED: Allow schedules in Cloud Run (requires min 1 instance)
- 	const { user } = await validateRequest(ctx.req);
- 	if (!user || user.role !== "owner") {
- 		return {
 diff --git a/apps/dokploy/server/server.ts b/apps/dokploy/server/server.ts
 index eaf56269..f160b6f7 100644
 --- a/apps/dokploy/server/server.ts
@@ -46,7 +26,7 @@ index eaf56269..f160b6f7 100644
 
  		if (IS_CLOUD && process.env.NODE_ENV === "production") {
  			await migration();
-+			// PATCHED: Enable schedules for Cloud Run (requires min 1 instance)
++			// PATCHED: Initialize schedules for remote servers (requires min 1 instance)
 +			await initSchedules();
  		}
 
