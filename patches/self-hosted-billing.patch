@@ -1,3 +1,27 @@
+diff --git a/apps/dokploy/server/api/routers/project.ts b/apps/dokploy/server/api/routers/project.ts
+index 9f46d7de..3f159b33 100644
+--- a/apps/dokploy/server/api/routers/project.ts
++++ b/apps/dokploy/server/api/routers/project.ts
+@@ -69,12 +69,13 @@ export const projectRouter = createTRPCRouter({
+
+ 				const admin = await findUserById(ctx.user.ownerId);
+
+-				if (admin.serversQuantity === 0 && IS_CLOUD) {
+-					throw new TRPCError({
+-						code: "NOT_FOUND",
+-						message: "No servers available, Please subscribe to a plan",
+-					});
+-				}
++				// PATCHED: Disabled subscription check for self-hosted Cloud Run
++				// if (admin.serversQuantity === 0 && IS_CLOUD) {
++				// 	throw new TRPCError({
++				// 		code: "NOT_FOUND",
++				// 		message: "No servers available, Please subscribe to a plan",
++				// 	});
++				// }
+
+ 				const project = await createProject(
+ 					input,
 diff --git a/apps/dokploy/server/api/routers/settings.ts b/apps/dokploy/server/api/routers/settings.ts
 index e0a74f5c..f5e03169 100644
 --- a/apps/dokploy/server/api/routers/settings.ts
