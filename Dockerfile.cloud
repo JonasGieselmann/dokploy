@@ -6,14 +6,23 @@ RUN corepack enable
 RUN corepack prepare pnpm@9.12.0 --activate
 
 FROM base AS build
-COPY . /usr/src/app
 WORKDIR /usr/src/app
 
-# Install build dependencies (same as main Dockerfile)
+# Install build dependencies first (cached layer)
 RUN apt-get update && apt-get install -y python3 make g++ git python3-pip pkg-config libsecret-1-dev && rm -rf /var/lib/apt/lists/*
 
-# Install ALL dependencies first (needed for native modules like node-pty)
+# Copy lockfiles and package.json files first for better layer caching
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/server/package.json ./packages/server/
+COPY apps/dokploy/package.json ./apps/dokploy/
+COPY apps/api/package.json ./apps/api/
+COPY apps/schedules/package.json ./apps/schedules/
+
+# Install dependencies (this layer is cached if lockfiles don't change)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+
+# Now copy source code (changes here don't invalidate dependency cache)
+COPY . .
 
 # Build
 ENV NODE_ENV=production
