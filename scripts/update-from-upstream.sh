@@ -34,7 +34,8 @@ fi
 echo "Backing up Cloud Run config..."
 cp cloudbuild.yaml /tmp/cloudbuild.yaml.bak
 cp Dockerfile.cloud /tmp/Dockerfile.cloud.bak
-cp -r patches /tmp/patches.bak 2>/dev/null || true
+rm -rf /tmp/patches.bak
+cp -r patches /tmp/patches.bak
 
 # Merge upstream
 echo "Merging upstream/main..."
@@ -56,15 +57,18 @@ fi
 echo "Restoring Cloud Run config..."
 cp /tmp/cloudbuild.yaml.bak cloudbuild.yaml
 cp /tmp/Dockerfile.cloud.bak Dockerfile.cloud
-cp -r /tmp/patches.bak patches 2>/dev/null || true
+rm -rf patches
+cp -r /tmp/patches.bak patches
 
 # Test if patches still apply
 echo "Testing patches..."
 PATCH_OK=true
 for patch in patches/*.patch; do
     if [ -f "$patch" ]; then
-        if ! patch -p1 --dry-run < "$patch" > /dev/null 2>&1; then
-            echo "WARNING: Patch $patch may need updating!"
+        if git apply --check "$patch" 2>/dev/null; then
+            echo "✓ $patch OK"
+        else
+            echo "✗ $patch may need updating!"
             PATCH_OK=false
         fi
     fi
