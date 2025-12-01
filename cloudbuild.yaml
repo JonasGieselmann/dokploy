@@ -25,14 +25,14 @@ steps:
     - |
       docker pull europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest || true
 
-# Step 3: Build the Docker image with BuildKit and cache.
+# Step 3: Build the Docker image with BuildKit (no-cache to fix corrupted cache)
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: 'bash'
   args:
     - '-c'
     - |
       DOCKER_BUILDKIT=1 docker build \
-        --cache-from europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest \
+        --no-cache \
         -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA \
         -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest \
         -f Dockerfile.cloud \

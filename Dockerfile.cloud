@@ -9,22 +9,13 @@ FROM base AS build
 COPY . /usr/src/app
 WORKDIR /usr/src/app
 
+# Install build dependencies (same as main Dockerfile)
 RUN apt-get update && apt-get install -y python3 make g++ git python3-pip pkg-config libsecret-1-dev && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter=@dokploy/server --filter=./apps/dokploy install --frozen-lockfile
+# Install ALL dependencies first (needed for native modules like node-pty)
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-
-# Deploy only the dokploy app
-ARG NEXT_PUBLIC_UMAMI_HOST
-ENV NEXT_PUBLIC_UMAMI_HOST=$NEXT_PUBLIC_UMAMI_HOST
-
-ARG NEXT_PUBLIC_UMAMI_WEBSITE_ID
-ENV NEXT_PUBLIC_UMAMI_WEBSITE_ID=$NEXT_PUBLIC_UMAMI_WEBSITE_ID
-
-ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-
+# Build
 ENV NODE_ENV=production
 RUN pnpm --filter=@dokploy/server build
 RUN pnpm --filter=./apps/dokploy run build
@@ -40,7 +31,7 @@ WORKDIR /app
 # Set production
 ENV NODE_ENV=production
 
-RUN apt-get update && apt-get install -y curl unzip apache2-utils && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl unzip apache2-utils openssh-client && rm -rf /var/lib/apt/lists/*
 
 # Copy only the necessary files
 COPY --from=build /prod/dokploy/.next ./.next
@@ -52,11 +43,10 @@ COPY --from=build /prod/dokploy/drizzle ./drizzle
 COPY --from=build /prod/dokploy/components.json ./components.json
 COPY --from=build /prod/dokploy/node_modules ./node_modules
 
-
-# Install RCLONE
+# Install RCLONE (for backups to external servers)
 RUN curl https://rclone.org/install.sh | bash
 
-# tsx
+# tsx for running scripts
 RUN pnpm install -g tsx
 
 EXPOSE 3000
