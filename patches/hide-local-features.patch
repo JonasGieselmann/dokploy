@@ -1,16 +1,11 @@
 diff --git a/apps/dokploy/components/layouts/side.tsx b/apps/dokploy/components/layouts/side.tsx
-index 7473fe58..e652669e 100644
+index 7473fe58..35c34654 100644
 --- a/apps/dokploy/components/layouts/side.tsx
 +++ b/apps/dokploy/components/layouts/side.tsx
-@@ -144,61 +144,56 @@ const MENU: Menu = {
- 			url: "/dashboard/projects",
- 			icon: Folder,
- 		},
--		{
--			isSingle: true,
--			title: "Monitoring",
--			url: "/dashboard/monitoring",
--			icon: BarChartHorizontalBigIcon,
+@@ -149,56 +149,53 @@ const MENU: Menu = {
+ 			title: "Monitoring",
+ 			url: "/dashboard/monitoring",
+ 			icon: BarChartHorizontalBigIcon,
 -			// Only enabled in non-cloud environments
 -			isEnabled: ({ isCloud }) => !isCloud,
 -		},
@@ -33,15 +28,10 @@ index 7473fe58..e652669e 100644
 -					(auth?.role === "owner" || auth?.canAccessToTraefikFiles) &&
 -					!isCloud
 -				),
--		},
-+		// PATCHED: Disabled for Cloud Run (no local Docker/Traefik)
-+		// {
-+		// 	isSingle: true,
-+		// 	title: "Monitoring",
-+		// 	url: "/dashboard/monitoring",
-+		// 	icon: BarChartHorizontalBigIcon,
-+		// 	isEnabled: ({ isCloud }) => !isCloud,
-+		// },
++			// PATCHED: Enabled for external server monitoring
++			isEnabled: ({ auth }) => auth?.role === "owner",
+ 		},
++		// PATCHED: Disabled - needs Cloud Scheduler for reliable cron in Cloud Run
 +		// {
 +		// 	isSingle: true,
 +		// 	title: "Schedules",
@@ -49,6 +39,7 @@ index 7473fe58..e652669e 100644
 +		// 	icon: Clock,
 +		// 	isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
 +		// },
++		// PATCHED: Disabled - needs local Traefik filesystem
 +		// {
 +		// 	isSingle: true,
 +		// 	title: "Traefik File System",
@@ -65,7 +56,7 @@ index 7473fe58..e652669e 100644
 -			// Only enabled for admins and users with access to Docker in non-cloud environments
 -			isEnabled: ({ auth, isCloud }) =>
 -				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
-+			// PATCHED: Always enabled for self-hosted (works on external servers)
++			// PATCHED: Works on external servers via SSH
 +			isEnabled: ({ auth }) =>
 +				!!(auth?.role === "owner" || auth?.canAccessToDocker),
  		},
@@ -86,11 +77,11 @@ index 7473fe58..e652669e 100644
 -			// Only enabled for admins and users with access to Docker in non-cloud environments
 -			isEnabled: ({ auth, isCloud }) =>
 -				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
-+			// PATCHED: Always enabled for self-hosted (works on external servers)
++			// PATCHED: Works on external servers via SSH
 +			isEnabled: ({ auth }) =>
 +				!!(auth?.role === "owner" || auth?.canAccessToDocker),
  		},
-+		// PATCHED: Disabled for Cloud Run (needs local Traefik access log)
++		// PATCHED: Disabled - needs local Traefik access log
 +		// {
 +		// 	isSingle: true,
 +		// 	title: "Requests",
