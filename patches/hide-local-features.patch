@@ -1,0 +1,160 @@
+diff --git a/apps/dokploy/components/layouts/side.tsx b/apps/dokploy/components/layouts/side.tsx
+index 7473fe58..b3e6c800 100644
+--- a/apps/dokploy/components/layouts/side.tsx
++++ b/apps/dokploy/components/layouts/side.tsx
+@@ -144,61 +144,54 @@ const MENU: Menu = {
+ 			url: "/dashboard/projects",
+ 			icon: Folder,
+ 		},
+-		{
+-			isSingle: true,
+-			title: "Monitoring",
+-			url: "/dashboard/monitoring",
+-			icon: BarChartHorizontalBigIcon,
+-			// Only enabled in non-cloud environments
+-			isEnabled: ({ isCloud }) => !isCloud,
+-		},
+-		{
+-			isSingle: true,
+-			title: "Schedules",
+-			url: "/dashboard/schedules",
+-			icon: Clock,
+-			// Only enabled in non-cloud environments
+-			isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
+-		},
+-		{
+-			isSingle: true,
+-			title: "Traefik File System",
+-			url: "/dashboard/traefik",
+-			icon: GalleryVerticalEnd,
+-			// Only enabled for admins and users with access to Traefik files in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!(
+-					(auth?.role === "owner" || auth?.canAccessToTraefikFiles) &&
+-					!isCloud
+-				),
+-		},
+-		{
+-			isSingle: true,
+-			title: "Docker",
+-			url: "/dashboard/docker",
+-			icon: BlocksIcon,
+-			// Only enabled for admins and users with access to Docker in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
+-		},
+-		{
+-			isSingle: true,
+-			title: "Swarm",
+-			url: "/dashboard/swarm",
+-			icon: PieChart,
+-			// Only enabled for admins and users with access to Docker in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
+-		},
+-		{
+-			isSingle: true,
+-			title: "Requests",
+-			url: "/dashboard/requests",
+-			icon: Forward,
+-			// Only enabled for admins and users with access to Docker in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) =>
+-				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
+-		},
++		// PATCHED: All local-only features disabled for Cloud Run deployment
++		// These require local Docker daemon or local filesystem access
++		// {
++		// 	isSingle: true,
++		// 	title: "Monitoring",
++		// 	url: "/dashboard/monitoring",
++		// 	icon: BarChartHorizontalBigIcon,
++		// 	isEnabled: ({ isCloud }) => !isCloud,
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Schedules",
++		// 	url: "/dashboard/schedules",
++		// 	icon: Clock,
++		// 	isEnabled: ({ isCloud, auth }) => !isCloud && auth?.role === "owner",
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Traefik File System",
++		// 	url: "/dashboard/traefik",
++		// 	icon: GalleryVerticalEnd,
++		// 	isEnabled: ({ auth, isCloud }) =>
++		// 		!!((auth?.role === "owner" || auth?.canAccessToTraefikFiles) && !isCloud),
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Docker",
++		// 	url: "/dashboard/docker",
++		// 	icon: BlocksIcon,
++		// 	isEnabled: ({ auth, isCloud }) =>
++		// 		!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Swarm",
++		// 	url: "/dashboard/swarm",
++		// 	icon: PieChart,
++		// 	isEnabled: ({ auth, isCloud }) =>
++		// 		!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
++		// },
++		// {
++		// 	isSingle: true,
++		// 	title: "Requests",
++		// 	url: "/dashboard/requests",
++		// 	icon: Forward,
++		// 	isEnabled: ({ auth, isCloud }) =>
++		// 		!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
++		// },
+ 
+ 		// Legacy unused menu, adjusted to the new structure
+ 		// {
+@@ -258,14 +251,14 @@ const MENU: Menu = {
+ 	],
+ 
+ 	settings: [
+-		{
+-			isSingle: true,
+-			title: "Web Server",
+-			url: "/dashboard/settings/server",
+-			icon: Activity,
+-			// Only enabled for admins in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) => !!(auth?.role === "owner" && !isCloud),
+-		},
++		// PATCHED: Disabled - Web Server settings need local Docker/Traefik
++		// {
++		// 	isSingle: true,
++		// 	title: "Web Server",
++		// 	url: "/dashboard/settings/server",
++		// 	icon: Activity,
++		// 	isEnabled: ({ auth, isCloud }) => !!(auth?.role === "owner" && !isCloud),
++		// },
+ 		{
+ 			isSingle: true,
+ 			title: "Profile",
+@@ -338,14 +331,14 @@ const MENU: Menu = {
+ 			// Only enabled for admins
+ 			isEnabled: ({ auth }) => !!(auth?.role === "owner"),
+ 		},
+-		{
+-			isSingle: true,
+-			title: "Cluster",
+-			url: "/dashboard/settings/cluster",
+-			icon: Boxes,
+-			// Only enabled for admins in non-cloud environments
+-			isEnabled: ({ auth, isCloud }) => !!(auth?.role === "owner" && !isCloud),
+-		},
++		// PATCHED: Disabled - Cluster settings need local Docker Swarm
++		// {
++		// 	isSingle: true,
++		// 	title: "Cluster",
++		// 	url: "/dashboard/settings/cluster",
++		// 	icon: Boxes,
++		// 	isEnabled: ({ auth, isCloud }) => !!(auth?.role === "owner" && !isCloud),
++		// },
+ 		{
+ 			isSingle: true,
+ 			title: "Notifications",

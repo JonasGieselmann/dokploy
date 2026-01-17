@@ -1,0 +1,27 @@
+diff --git a/apps/dokploy/server/server.ts b/apps/dokploy/server/server.ts
+index eaf56269..modified 100644
+--- a/apps/dokploy/server/server.ts
++++ b/apps/dokploy/server/server.ts
+@@ -59,16 +59,17 @@ void app.prepare().then(async () => {
+ 		}
+
+ 		if (IS_CLOUD && process.env.NODE_ENV === "production") {
+ 			await migration();
++			// PATCHED: Initialize schedules for remote servers in cloud mode
++			await initSchedules();
+ 		}
+
+ 		server.listen(PORT, HOST);
+ 		console.log(`Server Started on: http://${HOST}:${PORT}`);
+-		if (!IS_CLOUD) {
+-			console.log("Starting Deployment Worker");
+-			const { deploymentWorker } = await import("./queues/deployments-queue");
+-			await deploymentWorker.run();
+-		}
++		// PATCHED: Always start deployment worker (embedded Redis in container)
++		console.log("Starting Deployment Worker");
++		const { deploymentWorker } = await import("./queues/deployments-queue");
++		await deploymentWorker.run();
+ 	} catch (e) {
+ 		console.error("Main Server Error", e);
+ 	}

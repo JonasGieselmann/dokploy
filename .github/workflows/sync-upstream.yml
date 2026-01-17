@@ -1,0 +1,273 @@
+name: Sync with Upstream Dokploy
+
+on:
+  schedule:
+    # Runs weekly on Saturday at 3:00 AM UTC
+    - cron: '0 3 * * 6'
+  workflow_dispatch:
+    inputs:
+      force_sync:
+        description: 'Force sync even if already up to date'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  sync-upstream:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync with origin/main first
+        run: |
+          echo "Ensuring we're up to date with origin/main..."
+          git fetch origin main
+          git reset --hard origin/main
+          echo "Now at: $(git rev-parse HEAD)"
+
+      - name: Add upstream remote
+        run: |
+          if git remote get-url upstream >/dev/null 2>&1; then
+            echo "Upstream remote already exists"
+          else
+            git remote add upstream https://github.com/Dokploy/dokploy.git
+          fi
+          git fetch upstream
+
+      - name: Backup local files before sync
+        run: |
+          mkdir -p /tmp/backup/.github/workflows
+          mkdir -p /tmp/backup/.github/workflows-disabled
+          mkdir -p /tmp/backup/patches
+
+          # Backup .gitignore (has custom entries like .claude)
+          if [ -f ".gitignore" ]; then
+            cp .gitignore /tmp/backup/
+            echo "Backed up .gitignore"
+          fi
+
+          # Backup cloudbuild.yaml
+          if [ -f "cloudbuild.yaml" ]; then
+            cp cloudbuild.yaml /tmp/backup/
+            echo "Backed up cloudbuild.yaml"
+          fi
+
+          # Backup Dockerfile.cloud
+          if [ -f "Dockerfile.cloud" ]; then
+            cp Dockerfile.cloud /tmp/backup/
+            echo "Backed up Dockerfile.cloud"
+          fi
+
+          # Backup patches folder (check if not empty)
+          if [ -d "patches" ] && [ -n "$(ls -A patches 2>/dev/null)" ]; then
+            cp -r patches/* /tmp/backup/patches/
+            echo "Backed up patches/"
+          fi
+
+          # Backup this sync workflow (CRITICAL)
+          if [ -f ".github/workflows/sync-upstream.yml" ]; then
+            cp .github/workflows/sync-upstream.yml /tmp/backup/.github/workflows/
+            echo "Backed up sync-upstream.yml"
+          fi
+
+          # Backup disabled workflows folder (check if not empty)
+          if [ -d ".github/workflows-disabled" ] && [ -n "$(ls -A .github/workflows-disabled 2>/dev/null)" ]; then
+            cp -r .github/workflows-disabled/* /tmp/backup/.github/workflows-disabled/
+            echo "Backed up workflows-disabled/"
+          fi
+
+          # Backup custom folder if exists
+          if [ -d ".custom" ]; then
+            cp -r .custom /tmp/backup/
+            echo "Backed up .custom/"
+          fi
+
+          echo ""
+          echo "Backup contents:"
+          find /tmp/backup -type f | while read f; do echo "  - $f"; done
+
+      - name: Create git backup before sync
+        run: |
+          echo "Creating backup branch before sync..."
+          BACKUP_BRANCH="backup/pre-sync-$(date +%Y%m%d-%H%M%S)"
+          git branch "$BACKUP_BRANCH"
+          echo "Backup branch created: $BACKUP_BRANCH"
+          echo "BACKUP_BRANCH=$BACKUP_BRANCH" >> $GITHUB_ENV
+
+      - name: Check for upstream changes
+        id: check
+        run: |
+          LOCAL_HASH=$(git rev-parse HEAD)
+          UPSTREAM_HASH=$(git rev-parse upstream/canary)
+
+          BEHIND_COUNT=$(git rev-list --count HEAD..upstream/canary)
+          AHEAD_COUNT=$(git rev-list --count upstream/canary..HEAD)
+
+          echo "Status:"
+          echo "  Local HEAD:    $LOCAL_HASH"
+          echo "  Upstream HEAD: $UPSTREAM_HASH"
+          echo "  Commits behind upstream: $BEHIND_COUNT"
+          echo "  Commits ahead of upstream: $AHEAD_COUNT"
+
+          if [ "$BEHIND_COUNT" -eq 0 ] && [ "${{ inputs.force_sync }}" != "true" ]; then
+            echo "Already up to date with upstream"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "$BEHIND_COUNT commits to sync from upstream"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Merge upstream changes
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          echo "Merging upstream/canary into main..."
+
+          # Attempt to merge
+          if git merge upstream/canary --no-edit --allow-unrelated-histories; then
+            echo "Merge successful"
+          else
+            echo "Merge conflicts detected - resetting to upstream"
+            git merge --abort 2>/dev/null || true
+            git reset --hard upstream/canary
+          fi
+
+          git log --oneline -5
+
+      - name: Restore protected files
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          echo "Restoring protected files..."
+
+          # Restore .gitignore
+          if [ -f "/tmp/backup/.gitignore" ]; then
+            cp /tmp/backup/.gitignore ./.gitignore
+            git add .gitignore
+            echo "Restored .gitignore"
+          fi
+
+          # Restore cloudbuild.yaml
+          if [ -f "/tmp/backup/cloudbuild.yaml" ]; then
+            cp /tmp/backup/cloudbuild.yaml ./cloudbuild.yaml
+            git add cloudbuild.yaml
+            echo "Restored cloudbuild.yaml"
+          fi
+
+          # Restore Dockerfile.cloud
+          if [ -f "/tmp/backup/Dockerfile.cloud" ]; then
+            cp /tmp/backup/Dockerfile.cloud ./Dockerfile.cloud
+            git add Dockerfile.cloud
+            echo "Restored Dockerfile.cloud"
+          fi
+
+          # Restore patches folder
+          if [ -d "/tmp/backup/patches" ] && [ -n "$(ls -A /tmp/backup/patches 2>/dev/null)" ]; then
+            mkdir -p patches
+            cp -r /tmp/backup/patches/* patches/
+            git add patches/
+            echo "Restored patches/"
+          fi
+
+          # Restore sync workflow (CRITICAL)
+          mkdir -p .github/workflows
+          if [ -f "/tmp/backup/.github/workflows/sync-upstream.yml" ]; then
+            cp /tmp/backup/.github/workflows/sync-upstream.yml .github/workflows/
+            git add .github/workflows/sync-upstream.yml
+            echo "Restored sync-upstream.yml"
+          fi
+
+          # Restore custom folder
+          if [ -d "/tmp/backup/.custom" ]; then
+            cp -r /tmp/backup/.custom ./
+            git add .custom/
+            echo "Restored .custom/"
+          fi
+
+          # Restore disabled workflows
+          if [ -d "/tmp/backup/.github/workflows-disabled" ] && [ -n "$(ls -A /tmp/backup/.github/workflows-disabled 2>/dev/null)" ]; then
+            mkdir -p .github/workflows-disabled
+            cp -r /tmp/backup/.github/workflows-disabled/* .github/workflows-disabled/
+            git add .github/workflows-disabled/
+            echo "Restored workflows-disabled/"
+          fi
+
+          # Disable ALL upstream workflows (move to workflows-disabled)
+          mkdir -p .github/workflows-disabled
+          shopt -s nullglob
+          for workflow in .github/workflows/*.yml .github/workflows/*.yaml; do
+            if [ -f "$workflow" ]; then
+              filename=$(basename "$workflow")
+              if [ "$filename" != "sync-upstream.yml" ]; then
+                mv "$workflow" .github/workflows-disabled/
+                git add ".github/workflows-disabled/$filename"
+                echo "Disabled: $filename"
+              fi
+            fi
+          done
+          shopt -u nullglob
+          git add .github/workflows/
+
+      - name: Commit changes
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          if ! git diff --staged --quiet; then
+            git commit \
+              -m "chore: sync with upstream Dokploy" \
+              -m "Synced from Dokploy/dokploy canary branch" \
+              -m "Protected files preserved (cloudbuild.yaml, Dockerfile.cloud, patches/, sync-upstream.yml)" \
+              -m "Auto-synced by GitHub Actions"
+          fi
+
+      - name: Push changes
+        id: push
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          echo "Pushing to main..."
+          # We started from origin/main and only added commits on top
+          # So a normal push should work. Use --force-with-lease as safety.
+          if git push origin main --force-with-lease; then
+            echo "Push successful!"
+          else
+            echo "Push failed, attempting force push..."
+            # If force-with-lease fails, it means origin changed during workflow
+            # In this case, we need to force push our changes
+            git push origin main --force
+            echo "Force push completed!"
+          fi
+          echo ""
+          echo "Sync complete! Current HEAD: $(git rev-parse HEAD)"
+
+      - name: Restore from backup on failure
+        if: failure() && steps.check.outputs.has_changes == 'true'
+        run: |
+          echo "Sync failed! Restoring from backup..."
+          if [ -n "$BACKUP_BRANCH" ]; then
+            git reset --hard "$BACKUP_BRANCH"
+            echo "Restored to backup branch: $BACKUP_BRANCH"
+            echo "Attempting to push restored state..."
+            git push origin main --force || echo "Could not push restored state"
+          fi
+          echo ""
+          echo "Please check the logs and manually resolve the issue."
+
+      - name: Cleanup backup branch on success
+        if: success() && steps.check.outputs.has_changes == 'true'
+        run: |
+          echo "Sync successful! Cleaning up backup branch..."
+          if [ -n "$BACKUP_BRANCH" ]; then
+            git branch -D "$BACKUP_BRANCH" 2>/dev/null || true
+            echo "Backup branch $BACKUP_BRANCH deleted"
+          fi

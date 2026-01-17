@@ -1,0 +1,118 @@
+# Cloud Run Deployment for Self-Hosted Dokploy
+# Uses embedded Redis in container for deployment queue
+#
+# Required: DATABASE_URL (Supabase) must be set in Cloud Run service
+# No external Redis needed - it runs inside the container
+
+steps:
+# Step 1: Normalize line endings and apply patches
+- name: 'gcr.io/cloud-builders/git'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      echo "=== Normalizing line endings for patching ==="
+      # Convert CRLF to LF in files that will be patched
+      for file in \
+        apps/dokploy/server/api/routers/server.ts \
+        apps/dokploy/server/api/routers/project.ts \
+        apps/dokploy/server/api/routers/settings.ts \
+        apps/dokploy/server/api/routers/stripe.ts \
+        apps/dokploy/server/server.ts \
+        apps/dokploy/server/utils/deploy.ts \
+        apps/dokploy/server/queues/redis-connection.ts \
+        apps/dokploy/components/layouts/side.tsx; do
+        if [ -f "$$file" ]; then
+          sed -i 's/\r$$//' "$$file"
+        fi
+      done
+
+      echo "=== Applying self-hosted patches ==="
+      echo "Patches to apply:"
+      ls -la patches/*.patch 2>/dev/null || echo "No patches found"
+      echo ""
+
+      FAILED_PATCHES=""
+      APPLIED_PATCHES=""
+      for patch in patches/*.patch; do
+        if [ -f "$$patch" ]; then
+          echo "Applying $$patch..."
+          # Try git apply first, then fall back to 3-way merge for conflicts
+          if git apply --check "$$patch" 2>/dev/null; then
+            git apply "$$patch" && echo "✓ $$patch applied successfully"
+            APPLIED_PATCHES="$$APPLIED_PATCHES $$patch"
+          elif git apply --3way "$$patch" 2>/dev/null; then
+            echo "✓ $$patch applied with 3-way merge"
+            APPLIED_PATCHES="$$APPLIED_PATCHES $$patch"
+          else
+            echo "✗ $$patch FAILED - manual update may be required"
+            FAILED_PATCHES="$$FAILED_PATCHES $$patch"
+          fi
+        fi
+      done
+
+      echo ""
+      echo "=== Patches Summary ==="
+      echo "Applied:$$APPLIED_PATCHES"
+      if [ -n "$$FAILED_PATCHES" ]; then
+        echo "FAILED:$$FAILED_PATCHES"
+        echo "WARNING: Some patches failed to apply. Check if they need updating."
+      fi
+      echo "=== Done ==="
+
+# Step 2: Pull cache image (ignore if not exists)
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      docker pull europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest || true
+
+# Step 3: Build with BuildKit and inline cache
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      DOCKER_BUILDKIT=1 docker build \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        --cache-from europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest \
+        -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA \
+        -t europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest \
+        -f Dockerfile.cloud \
+        .
+
+# Step 4: Push both tags to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      docker push europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA
+      docker push europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest
+
+# Step 5: Deploy to Cloud Run
+# Optimized for deployment processing (always-on, CPU allocated)
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      gcloud run services update dokploy \
+        --image europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA \
+        --region europe-west1 \
+        --platform managed \
+        --update-env-vars "IS_CLOUD=true" \
+        --min-instances 1 \
+        --no-cpu-throttling \
+        --memory 1Gi \
+        --cpu 1 \
+        --concurrency 80 \
+        --timeout 3600
+
+images:
+- 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:$COMMIT_SHA'
+- 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/dokploy/dokploy:latest'
+
+options:
+  logging: 'CLOUD_LOGGING_ONLY'

@@ -37,6 +37,7 @@ yarn-error.log*
 
 # Editor
 .idea
+.claude
 
 # Misc
 .DS_Store
@@ -44,6 +45,3 @@ yarn-error.log*
 
 
 .db
-
-# Development environment
-.devcontainer
