@@ -18,6 +18,8 @@ import { getHubSpotUTK, submitToHubSpot } from "../utils/tracking/hubspot";
 import { sendEmail } from "../verification/send-verification-email";
 import { getPublicIpWithFallback } from "../wss/utils";
 
+const trustedProviders = process.env?.TRUSTED_PROVIDERS?.split(",") || [];
+
 const { handler, api } = betterAuth({
 	database: drizzleAdapter(db, {
 		provider: "pg",
@@ -30,6 +32,27 @@ const { handler, api } = betterAuth({
 		"/organization/delete",
 	],
 	secret: BETTER_AUTH_SECRET,
+	...(!IS_CLOUD
+		? {
+				advanced: {
+					useSecureCookies: false,
+					defaultCookieAttributes: {
+						sameSite: "lax",
+						secure: false,
+						httpOnly: true,
+						path: "/",
+					},
+				},
+			}
+		: {}),
+
+	account: {
+		accountLinking: {
+			enabled: true,
+			trustedProviders: ["github", "google", ...(trustedProviders || [])],
+			allowDifferentEmails: true,
+		},
+	},
 	appName: "Dokploy",
 	socialProviders: {
 		github: {
@@ -57,7 +80,10 @@ const { handler, api } = betterAuth({
 			...(settings?.serverIp ? [`http://${settings?.serverIp}:3000`] : []),
 			...(settings?.host ? [`https://${settings?.host}`] : []),
 			...(process.env.NODE_ENV === "development"
-				? ["http://localhost:3000"]
+				? [
+						"http://localhost:3000",
+						"https://absolutely-handy-falcon.ngrok-free.app",
+					]
 				: []),
 			...trustedOrigins,
 		];
@@ -321,6 +347,7 @@ export const auth = {
 	handler,
 	createApiKey: api.createApiKey,
 	registerSSOProvider: api.registerSSOProvider,
+	updateSSOProvider: api.updateSSOProvider,
 };
 
 export const validateRequest = async (request: IncomingMessage) => {
