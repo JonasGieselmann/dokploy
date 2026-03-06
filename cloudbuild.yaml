@@ -56,9 +56,20 @@ steps:
       echo "Applied:$$APPLIED_PATCHES"
       if [ -n "$$FAILED_PATCHES" ]; then
         echo "FAILED:$$FAILED_PATCHES"
-        echo "WARNING: Some patches failed to apply. Check if they need updating."
+        echo "ERROR: Required self-hosted patches failed to apply. Refusing to continue with a partial patch state."
+        exit 1
       fi
       echo "=== Done ==="
+
+      echo "=== Preflight checks ==="
+      REQUIRED_FILES="docker/supervisor-cloud.conf"
+      for file in $$REQUIRED_FILES; do
+        if [ ! -f "$$file" ]; then
+          echo "ERROR: Required file missing: $$file"
+          exit 1
+        fi
+      done
+      echo "Preflight checks passed."
 
 # Step 2: Pull cache image (ignore if not exists)
 - name: 'gcr.io/cloud-builders/docker'
