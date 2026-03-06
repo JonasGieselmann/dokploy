@@ -112,10 +112,10 @@ jobs:
         id: check
         run: |
           LOCAL_HASH=$(git rev-parse HEAD)
-          UPSTREAM_HASH=$(git rev-parse upstream/canary)
+          UPSTREAM_HASH=$(git rev-parse upstream/main)
 
-          BEHIND_COUNT=$(git rev-list --count HEAD..upstream/canary)
-          AHEAD_COUNT=$(git rev-list --count upstream/canary..HEAD)
+          BEHIND_COUNT=$(git rev-list --count HEAD..upstream/main)
+          AHEAD_COUNT=$(git rev-list --count upstream/main..HEAD)
 
           echo "Status:"
           echo "  Local HEAD:    $LOCAL_HASH"
@@ -134,15 +134,15 @@ jobs:
       - name: Merge upstream changes
         if: steps.check.outputs.has_changes == 'true'
         run: |
-          echo "Merging upstream/canary into main..."
+          echo "Merging upstream/main into main..."
 
           # Attempt to merge
-          if git merge upstream/canary --no-edit --allow-unrelated-histories; then
+          if git merge upstream/main --no-edit --allow-unrelated-histories; then
             echo "Merge successful"
           else
             echo "Merge conflicts detected - resetting to upstream"
             git merge --abort 2>/dev/null || true
-            git reset --hard upstream/canary
+            git reset --hard upstream/main
           fi
 
           git log --oneline -5
@@ -226,7 +226,7 @@ jobs:
           if ! git diff --staged --quiet; then
             git commit \
               -m "chore: sync with upstream Dokploy" \
-              -m "Synced from Dokploy/dokploy canary branch" \
+              -m "Synced from Dokploy/dokploy main branch" \
               -m "Protected files preserved (cloudbuild.yaml, Dockerfile.cloud, patches/, sync-upstream.yml)" \
               -m "Auto-synced by GitHub Actions"
           fi
