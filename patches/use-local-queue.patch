@@ -1,0 +1,73 @@
+diff --git a/apps/dokploy/server/utils/deploy.ts b/apps/dokploy/server/utils/deploy.ts
+index original..modified 100644
+--- a/apps/dokploy/server/utils/deploy.ts
++++ b/apps/dokploy/server/utils/deploy.ts
+@@ -1,52 +1,51 @@
+ import { findServerById } from "@dokploy/server";
+ import type { DeploymentJob } from "../queues/queue-types";
++import { myQueue, cleanQueuesByApplication, cleanQueuesByCompose, killDockerBuild } from "../queues/queueSetup";
+
++// PATCHED: Use local BullMQ queue with embedded Redis
++// Instead of calling external SERVER_URL/deploy API
+ export const deploy = async (jobData: DeploymentJob) => {
+ 	try {
+ 		const server = await findServerById(jobData.serverId as string);
+ 		if (server.serverStatus === "inactive") {
+ 			throw new Error("Server is inactive");
+ 		}
+
+-		const result = await fetch(`${process.env.SERVER_URL}/deploy`, {
+-			method: "POST",
+-			headers: {
+-				"Content-Type": "application/json",
+-				"X-API-Key": process.env.API_KEY || "NO-DEFINED",
+-			},
+-			body: JSON.stringify(jobData),
++		// Add to local queue (processed by deployment worker)
++		await myQueue.add("deployments", jobData, {
++			removeOnComplete: true,
++			removeOnFail: true,
+ 		});
+
+-		const data = await result.json();
+-		return data;
++		return { success: true, queued: true };
+ 	} catch (error) {
+ 		throw error;
+ 	}
+ };
+
+ type CancelDeploymentData =
+ 	| { applicationId: string; applicationType: "application" }
+ 	| { composeId: string; applicationType: "compose" };
+
++// PATCHED: Use local queue cleanup instead of external SERVER_URL/cancel-deployment
+ export const cancelDeployment = async (cancelData: CancelDeploymentData) => {
+ 	try {
+-		const result = await fetch(`${process.env.SERVER_URL}/cancel-deployment`, {
+-			method: "POST",
+-			headers: {
+-				"Content-Type": "application/json",
+-				"X-API-Key": process.env.API_KEY || "NO-DEFINED",
+-			},
+-			body: JSON.stringify(cancelData),
+-		});
+-
+-		if (!result.ok) {
+-			const errorData = await result.json().catch(() => ({}));
+-			throw new Error(errorData.message || "Failed to cancel deployment");
++		if (cancelData.applicationType === "application") {
++			await cleanQueuesByApplication(cancelData.applicationId);
++			await killDockerBuild("application", null);
++		} else if (cancelData.applicationType === "compose") {
++			await cleanQueuesByCompose(cancelData.composeId);
++			await killDockerBuild("compose", null);
+ 		}
+
+-		const data = await result.json();
+-		return data;
++		return { success: true, cancelled: true };
+ 	} catch (error) {
+ 		throw error;
+ 	}
+ };

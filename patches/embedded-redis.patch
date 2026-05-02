@@ -1,0 +1,23 @@
+diff --git a/apps/dokploy/server/queues/redis-connection.ts b/apps/dokploy/server/queues/redis-connection.ts
+index original..modified 100644
+--- a/apps/dokploy/server/queues/redis-connection.ts
++++ b/apps/dokploy/server/queues/redis-connection.ts
+@@ -1,8 +1,15 @@
+ import type { ConnectionOptions } from "bullmq";
+
++// PATCHED: Use embedded Redis in Cloud Run container
++// Redis runs locally via supervisor alongside Node.js
++// No external Redis service needed
++
+ export const redisConfig: ConnectionOptions = {
+-	host:
+-		process.env.NODE_ENV === "production"
+-			? process.env.REDIS_HOST || "dokploy-redis"
+-			: "127.0.0.1",
++	host: process.env.REDIS_HOST || "127.0.0.1",
++	port: Number(process.env.REDIS_PORT) || 6379,
++	// Required for BullMQ workers to work correctly
++	maxRetriesPerRequest: null,
++	// Retry on connection failure
++	retryStrategy: (times: number) => Math.min(times * 100, 3000),
+ };

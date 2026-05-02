@@ -37,6 +37,7 @@ yarn-error.log*
 
 # Editor
 .idea
+.claude
 
 # Misc
 .DS_Store
